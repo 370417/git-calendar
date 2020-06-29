@@ -1,23 +1,29 @@
 use git2::Repository;
 
-fn main() {
-    let repo = match Repository::open_from_env() {
-        Ok(repo) => repo,
-        Err(e) => panic!("failed to find or open repository: {}", e),
+fn main() -> Result<(), git2::Error> {
+    let repo = Repository::open_from_env()?;
+    let config = repo.config()?;
+
+    let user_email = match config.get_entry("user.email")?.value() {
+        Some(email) => email.to_owned(),
+        None => panic!("user.email is invalid utf-8"),
     };
 
-    let config = match repo.config() {
-        Ok(config) => config,
-        Err(e) => panic!("failed to find or open config: {}", e),
-    };
+    let mut revwalk = repo.revwalk()?;
+    revwalk.set_sorting(git2::Sort::TIME)?;
+    revwalk.push_head()?;
 
-    let email = match config.get_entry("user.email") {
-        Ok(email_entry) => match email_entry.value() {
-            Some(email) => email.to_owned(),
-            None => panic!("user.email is invalid utf-8"),
-        },
-        Err(e) => panic!("failed to find user.email in git config: {}", e),
-    };
+    for oid in revwalk {
+        let commit = repo.find_commit(oid?)?;
+        let time = commit.time();
+        let author = commit.author();
+        let commit_email = match author.email() {
+            Some(email) => email,
+            None => panic!("commit email is invalid utf-8"),
+        };
 
-    println!("{}", email);
+        println!("time: {}, email: {}", time.seconds(), commit_email);
+    }
+
+    Ok(())
 }
