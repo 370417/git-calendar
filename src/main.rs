@@ -76,7 +76,7 @@ fn format_months(year: &Year) -> String {
 
 fn month0_name(month: usize) -> &'static str {
     [
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Nov", "Oct", "Dec",
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ][month]
 }
 
