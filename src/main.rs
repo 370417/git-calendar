@@ -1,9 +1,20 @@
 use chrono::{prelude::*, Duration};
 use git2::{Error, Repository, Sort};
+use structopt::StructOpt;
+
+#[derive(Debug, StructOpt)]
+#[structopt(about = "Visualize the past year of git history")]
+struct Opt {
+    /// Author's email address, or "*" for all commits. Defaults to git's user.email.
+    #[structopt(short, long)]
+    email: Option<String>,
+}
 
 fn main() {
+    let opt = Opt::from_args();
+
     let year = Year::from_today();
-    let contributions = match tally_contributions(&year) {
+    let contributions = match tally_contributions(&year, opt.email) {
         Ok(contributions) => contributions,
         Err(e) => panic!("{}", e),
     };
@@ -161,17 +172,20 @@ fn first_day_of_week(date: Date<Utc>) -> Date<Utc> {
         .unwrap()
 }
 
-fn tally_contributions(year: &Year) -> Result<Vec<[u32; 7]>, Error> {
+fn tally_contributions(year: &Year, email: Option<String>) -> Result<Vec<[u32; 7]>, Error> {
     let repo = Repository::open_from_env()?;
     let config = repo.config()?;
 
-    let user_email = match config.get_entry("user.email")?.value() {
-        Some(email) => email.to_owned(),
-        None => panic!("user.email is invalid utf-8"),
+    let user_email = match email {
+        Some(email) => email,
+        None => match config.get_entry("user.email")?.value() {
+            Some(email) => email.to_owned(),
+            None => panic!("user.email is invalid utf-8"),
+        },
     };
 
     let mut revwalk = repo.revwalk()?;
-    revwalk.set_sorting(Sort::TIME | Sort::REVERSE)?;
+    revwalk.set_sorting(Sort::TIME)?;
 
     // Start iterating from HEAD
     revwalk.push_head()?;
@@ -200,7 +214,7 @@ fn tally_contributions(year: &Year) -> Result<Vec<[u32; 7]>, Error> {
             None => panic!("commit email is invalid utf-8"),
         };
         // Tally relevant contributions
-        if commit_email == user_email {
+        if user_email == "*" || commit_email == user_email {
             contributions[week][weekday] += 1;
         }
     }

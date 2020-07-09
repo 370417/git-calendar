@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 chrono = "0.4"
 git2 = { version = "0.13", default-features = false }
+# structopt will eventually get merged into clap
+structopt = "0.3"
